@@ -120,6 +120,8 @@ const client = new OSS({
 });
 ```
 
+**OSS object key 命名**：ali-oss 中的 object key 使用 `oss/{relPath}` 格式（与当前 URL 路径保持一致）。例如用户上传的 `abc/img.jpg` 在 OSS 中的 key 为 `oss/abc/img.jpg`，访问 URL 为 `${ossURL}/oss/abc/img.jpg`。
+
 **兼容本地开发**：若 `OSS_BUCKET` 未设置，退回到本地文件系统模式（保持现有行为）。
 
 ### 4.4 `Toonflow-web/src/App.vue` — 非 Electron 时 baseUrl 使用同源地址
