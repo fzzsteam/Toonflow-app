@@ -46,7 +46,8 @@ export default async function startServe(randomPort: Boolean = false) {
   await checkPermissions();
 
   await u.writeVersion();
-  const io = new Server(server, { cors: { origin: "*" } });
+  const corsOrigin = process.env.CORS_ORIGIN ?? "*";
+  const io = new Server(server, { cors: { origin: corsOrigin } });
   socketInit(io);
 
   if (process.env.NODE_ENV == "dev") await buildRoute();
@@ -54,7 +55,7 @@ export default async function startServe(randomPort: Boolean = false) {
   expressWs(app);
 
   app.use(logger("dev"));
-  app.use(cors({ origin: "*" }));
+  app.use(cors({ origin: corsOrigin }));
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
