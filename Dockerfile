@@ -10,7 +10,7 @@ RUN npm config set registry https://registry.npmmirror.com/ && \
 # 从 named build context "web" 复制前端源码（见 docker buildx --build-context）
 COPY --from=web . .
 RUN yarn install --frozen-lockfile --network-timeout 300000 && \
-    yarn build && \
+    yarn build-only && \
     yarn cache clean
 
 # ── Stage 2: 构建后端 ────────────────────────────────────────────────────────
