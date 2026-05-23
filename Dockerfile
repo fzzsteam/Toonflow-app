@@ -32,7 +32,9 @@ RUN node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('packag
 RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip yarn install --frozen-lockfile --network-timeout 300000 && yarn cache clean
 # 复制源码并构建（esbuild 打包 src/app.ts -> data/serve/app.js）
 COPY . .
-RUN yarn build
+RUN yarn build && \
+    npm prune --production && \
+    rm -rf node_modules/onnxruntime-web
 
 # ── Stage 3: 运行时 ──────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runtime
