@@ -59,13 +59,15 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
-  // oss 静态资源
-  const ossDir = u.getPath("oss");
-  if (!fs.existsSync(ossDir)) {
-    fs.mkdirSync(ossDir, { recursive: true });
+  // oss 静态资源（OSS_BUCKET 已设置时文件存阿里云 OSS，无需本地静态服务）
+  if (!process.env.OSS_BUCKET) {
+    const ossDir = u.getPath("oss");
+    if (!fs.existsSync(ossDir)) {
+      fs.mkdirSync(ossDir, { recursive: true });
+    }
+    console.log("文件目录:", ossDir);
+    app.use("/oss", express.static(ossDir, { acceptRanges: false }));
   }
-  console.log("文件目录:", ossDir);
-  app.use("/oss", express.static(ossDir, { acceptRanges: false }));
   // skills 静态资源
   const skillsDir = u.getPath("skills");
   if (!fs.existsSync(skillsDir)) {
@@ -89,8 +91,8 @@ export default async function startServe(randomPort: Boolean = false) {
   console.log("文件目录:", assetsDir);
   app.use("/assets", express.static(assetsDir, { acceptRanges: false }));
 
-  // data/web 静态网站
-  const webDir = u.getPath("web");
+  // data/web 静态网站（编译产物在镜像内，不随 DATA_DIR 变化）
+  const webDir = path.join(process.cwd(), "data", "web");
   if (fs.existsSync(webDir)) {
     console.log("静态网站目录:", webDir);
     app.use(express.static(webDir, { acceptRanges: false }));
