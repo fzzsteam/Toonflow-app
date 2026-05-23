@@ -33,8 +33,14 @@ RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip yarn install --frozen-lockfile --network-
 # 复制源码并构建（esbuild 打包 src/app.ts -> data/serve/app.js）
 COPY . .
 RUN yarn build && \
-    npm prune --production && \
-    rm -rf node_modules/onnxruntime-web
+    rm -rf node_modules/typescript \
+           node_modules/tsx \
+           node_modules/nodemon \
+           node_modules/@esbuild \
+           node_modules/@types \
+           node_modules/cross-env \
+           node_modules/license-checker \
+           node_modules/onnxruntime-web
 
 # ── Stage 3: 运行时 ──────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runtime
