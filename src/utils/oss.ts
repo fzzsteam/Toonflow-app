@@ -35,6 +35,11 @@ class OSS {
   constructor() {
     this.useAliOss = !!process.env.OSS_BUCKET;
     if (this.useAliOss) {
+      if (!process.env.OSS_REGION || !process.env.OSS_ACCESS_KEY_ID || !process.env.OSS_ACCESS_KEY_SECRET) {
+        throw new Error(
+          "OSS_BUCKET is set but OSS_REGION / OSS_ACCESS_KEY_ID / OSS_ACCESS_KEY_SECRET are missing"
+        );
+      }
       this.client = new AliOSS({
         region: process.env.OSS_REGION!,
         accessKeyId: process.env.OSS_ACCESS_KEY_ID || "",
@@ -178,8 +183,9 @@ class OSS {
       try {
         await this.client!.head(toOssKey(userRelPath));
         return true;
-      } catch {
-        return false;
+      } catch (e: any) {
+        if (e?.status === 404 || e?.code === "NoSuchKey") return false;
+        throw e;
       }
     }
     await this.ensureInit();
@@ -207,15 +213,7 @@ class OSS {
     const originalUrl = await this.getFileUrl(userRelPath);
 
     try {
-      let srcBuffer: Buffer;
-      if (this.useAliOss) {
-        const result = await this.client!.get(toOssKey(userRelPath));
-        srcBuffer = result.content as Buffer;
-      } else {
-        await this.ensureInit();
-        const srcAbsPath = resolveSafeLocalPath(userRelPath, this.rootDir);
-        srcBuffer = await fs.readFile(srcAbsPath);
-      }
+      const srcBuffer = await this.getFile(userRelPath);
 
       const thumbBuffer = await sharp(srcBuffer)
         .resize(512, 512, { fit: "inside", withoutEnlargement: true })
