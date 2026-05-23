@@ -55,13 +55,13 @@ DOCKER_CONFIG=/tmp/docker-push-config docker push "$IMAGE:latest"
 ```
 
 > 注意：使用 `/tmp/docker-push-config` 中的 auth config 绕过 Docker Desktop credential store。
+> Token 已存在 `~/.zshrc` 的 `$GHCR_TOKEN` 环境变量中。
 > 若 `/tmp/docker-push-config/config.json` 不存在，先运行：
 > ```bash
 > mkdir -p /tmp/docker-push-config
-> echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "yuanjiawei:TOKEN" | base64)'"}}}' \
+> echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "jiawei666:$GHCR_TOKEN" | base64)'"}}}' \
 >   > /tmp/docker-push-config/config.json
 > ```
-> 将 `TOKEN` 替换为当前 GitHub PAT。
 
 ### 4. 提交版本变更（如升了版本）
 
