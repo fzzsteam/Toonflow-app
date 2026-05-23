@@ -4,7 +4,7 @@
 FROM node:22-bookworm-slim AS web-builder
 WORKDIR /web
 RUN npm config set registry https://registry.npmmirror.com/ && \
-    npm install -g yarn@1.22.22 && \
+    npm install -g yarn@1.22.22 --force && \
     yarn config set registry https://registry.npmmirror.com/ && \
     yarn config set network-timeout 300000
 # 从 named build context "web" 复制前端源码（见 docker buildx --build-context）
@@ -22,7 +22,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debia
     apt-get install -y build-essential python3 && \
     rm -rf /var/lib/apt/lists/*
 RUN npm config set registry https://registry.npmmirror.com/ && \
-    npm install -g yarn@1.22.22 && \
+    npm install -g yarn@1.22.22 --force && \
     yarn config set registry https://registry.npmmirror.com/ && \
     yarn config set network-timeout 300000
 # 先复制依赖文件，利用 Docker 层缓存
