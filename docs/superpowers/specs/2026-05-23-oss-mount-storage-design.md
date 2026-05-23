@@ -46,6 +46,14 @@ Directory ownership:
 - Non-Electron without `DATA_DIR`: use `<cwd>/data`.
 - Non-Electron with `DATA_DIR`: use that resolved directory.
 
+Add one shared media-root resolver used by both storage and HTTP serving:
+
+```typescript
+OSS_MOUNT_DIR ? path.resolve(OSS_MOUNT_DIR) : getPath("oss")
+```
+
+This resolver is the single source of truth for default media storage. It should create or validate the root directory during startup or `OSS` initialization, and startup logs should print the resolved path.
+
 `src/utils/oss.ts` returns to local filesystem semantics:
 
 - No `ali-oss` client.
@@ -63,6 +71,15 @@ The class still exposes the existing API used elsewhere in the app:
 - `writeFile()`
 - `fileExists()`
 - `getSmallImageUrl()`
+
+The `prefix` argument to `getFileUrl(userRelPath, prefix)` remains URL-prefix behavior only. It must not make `assets` or `skills` use `OSS_MOUNT_DIR`.
+
+Directory boundaries:
+
+- Default media files and generated thumbnails use the shared media root.
+- `/assets/*` is still served from `getPath("assets")` under `DATA_DIR`.
+- `/skills/*` is still served from `getPath("skills")` under `DATA_DIR`.
+- `data/web` remains fixed inside the image and does not use `DATA_DIR`.
 
 ## HTTP Access
 
@@ -87,6 +104,10 @@ When `OSS_MOUNT_DIR` is not set, the same route serves from the original local p
 ```
 
 This keeps URL behavior stable for the frontend and existing database records.
+
+`/oss` is intentionally public in this design because the current app exposes static assets before JWT authentication. This is acceptable only if generated and uploaded media are considered shareable within the deployment. If media must be private, this design must change to a token-checked media route before implementation.
+
+`/oss` should allow HTTP Range requests for video and audio playback unless a concrete regression is found. Large media files are a core use case, and disabling Range makes seeking and partial loading worse.
 
 ## Configuration Cleanup
 
@@ -113,6 +134,8 @@ Docker and SAE deployment changes unrelated to direct OSS upload should stay:
 - fixed `data/web` static path.
 - `DATA_DIR` support.
 
+The server should also honor `process.env.PORT` with `10588` as the fallback, because SAE may inject a required port. Docker health checks should use the same configured port.
+
 ## Error Handling
 
 Filesystem errors should surface normally for API handlers to handle or return:
@@ -123,6 +146,17 @@ Filesystem errors should surface normally for API handlers to handle or return:
 
 `OSS_MOUNT_DIR` should be resolved to an absolute path before path safety checks.
 
+## Data Initialization And Migration
+
+NAS and OSS mounts may start empty. Deployment must account for both:
+
+- NAS needs any required runtime data that is not in the image, including database files and app-managed `assets` or `skills` content.
+- OSS mount needs existing media files from the previous `data/oss` directory or previous OSS bucket layout before the app is switched over.
+
+The application will not rewrite existing database `filePath` values. Existing paths remain relative, so compatibility depends on the corresponding objects existing under the new media root.
+
+SQLite on NAS remains a single-instance design. SAE instance count, scaling, and release strategy must avoid two app instances writing the same SQLite database at the same time.
+
 ## Testing
 
 Verification should cover:
@@ -131,11 +165,13 @@ Verification should cover:
 - Local fallback without `OSS_MOUNT_DIR`: files write under `data/oss`.
 - Mounted-path mode with `OSS_MOUNT_DIR=/tmp/toonflow-oss-test`: write, read, URL generation, thumbnail generation, existence check, and delete all use that directory.
 - Express `/oss` static route uses `OSS_MOUNT_DIR` when set.
+- `/assets/ending.mp4` and `/skills/*` still resolve from `DATA_DIR`, not `OSS_MOUNT_DIR`.
 - No remaining code references direct OSS SDK env vars or `ali-oss`.
+- `PORT` env var is respected by the server and Docker health check.
+- SAE mount smoke test: write, immediate read, overwrite, delete, directory delete, thumbnail generation, and concurrent reads on the actual OSS mount.
 
 ## Out Of Scope
 
-- Changing existing database file path values.
-- Moving existing objects between NAS and OSS.
+- Rewriting existing database file path values.
 - Multi-instance SQLite changes.
 - Public bucket URL or signed URL support.
