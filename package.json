@@ -45,6 +45,7 @@
     "@huggingface/transformers": "^3.8.1",
     "@rmp135/sql-ts": "^2.2.0",
     "ai": "^6.0.67",
+    "ali-oss": "^6.23.0",
     "axios": "^1.13.2",
     "axios-retry": "^4.5.0",
     "better-sqlite3": "^12.9.0",
