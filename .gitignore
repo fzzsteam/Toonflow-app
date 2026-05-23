@@ -55,3 +55,5 @@ database.d.ts
 data/oss/*
 data/test.sqlite
 version.txt
+# SAE 部署配置（含敏感信息）
+deploy/sae-env.json

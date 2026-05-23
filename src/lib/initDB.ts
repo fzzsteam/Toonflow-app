@@ -1,11 +1,11 @@
 import { Knex } from "knex";
 import { v4 as uuid } from "uuid";
-import { getEmbedding } from "@/utils/agent/embedding";
 
 interface TableSchema {
   name: string;
   builder: (table: Knex.CreateTableBuilder) => void;
   initData?: (knex: Knex) => Promise<void>;
+  reinitIfEmpty?: boolean; // re-run initData if table exists but has no rows
 }
 
 export default async (knex: Knex, forceInit: boolean = false): Promise<void> => {
@@ -658,8 +658,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
         table.integer("state").notNullable(); // 1正常，0正在生成description，-1description为空。-2归属为空,-3md5变动，-4文件不存在
         table.primary(["id"]);
       },
+      reinitIfEmpty: true,
       initData: async (knex) => {
-        const list = [
+        const list: Array<{
+          id: string; md5: string; path: string; name: string; description: string;
+          embedding: string; type: string; createTime: number; updateTime: number; state: number;
+        }> = [
           {
             id: "4fb36012e56e395b425569987f5dab0e",
             md5: "fca3c269c5f325a65dafa663c9bb9773",
@@ -927,17 +931,12 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
             state: 1,
           },
         ];
-        await Promise.all(
-          list.map(async (item) => {
-            const embedding = await getEmbedding(item.description);
-            item.embedding = JSON.stringify(embedding);
-          }),
-        );
         await knex("o_skillList").insert(list);
       },
     },
     {
       name: "o_skillAttribution",
+      reinitIfEmpty: true,
       builder: (table) => {
         table.text("skillId").notNullable().references("id").inTable("o_skillList").onDelete("CASCADE");
         table.text("attribution").notNullable(); // "production_agent_decision.md" | "production_agent_execution.md" | "production_agent_supervision.md" | "script_agent_decision.md" | "script_agent_execution.md" | "script_agent_supervision.md" | "universal_agent.md"
@@ -1046,6 +1045,13 @@ export default async (knex: Knex, forceInit: boolean = false): Promise<void> => 
       }
       await knex.schema.createTable(t.name, t.builder);
       if (t.initData) {
+        await t.initData(knex);
+        console.log("[初始化数据库] 表数据初始化:", t.name);
+      }
+    } else if (t.reinitIfEmpty && t.initData) {
+      const count = await knex(t.name).count("* as n").first();
+      if (Number(count?.n ?? 0) === 0) {
+        console.log("[初始化数据库] 表存在但为空，重新初始化数据:", t.name);
         await t.initData(knex);
         console.log("[初始化数据库] 表数据初始化:", t.name);
       }

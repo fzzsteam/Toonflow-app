@@ -18,7 +18,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: write
 
     steps:
       - name: 检出后端代码
@@ -26,7 +25,6 @@ jobs:
 
       - name: 检出前端代码（Toonflow-web）
         run: |
-          # 若 Toonflow-web 为私有仓库，需在仓库 Secrets 中配置 GITEE_TOKEN
           if [ -n "${{ secrets.GITEE_TOKEN }}" ]; then
             git clone https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/shenzhen-fangzhi-zhisheng/Toonflow-web.git ../Toonflow-web
           else
@@ -46,12 +44,12 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 登录 GHCR
+      - name: 登录 ACR（阿里云深圳）
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: jiawei666
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: 构建并推送镜像
         uses: docker/build-push-action@v5
@@ -62,13 +60,12 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/jiawei666/toonflow:${{ steps.version.outputs.tag }}
-            ghcr.io/jiawei666/toonflow:latest
+            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}
+            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: 输出结果
         run: |
           echo "✅ 推送完成"
-          echo "镜像：ghcr.io/jiawei666/toonflow:${{ steps.version.outputs.tag }}"
-          echo "镜像：ghcr.io/jiawei666/toonflow:latest"
+          echo "ACR：crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"

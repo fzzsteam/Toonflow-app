@@ -24,7 +24,6 @@ const external = [
   "oracledb",
   "tedious",
   "mssql",
-  "proxy-agent",  // optional dep of urllib (ali-oss), not always installed
 ];
 
 // 后端服务打包配置

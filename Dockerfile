@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker.m.daocloud.io/docker/dockerfile:1
 
 # ── Stage 1: 构建前端 ────────────────────────────────────────────────────────
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS web-builder
@@ -31,16 +31,9 @@ COPY package.json yarn.lock ./
 RUN node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));const remove=['custom-electron-titlebar','electron','electron-builder','electron-rebuild','electronmon'];for(const section of ['dependencies','devDependencies']){if(!pkg[section])continue;for(const name of remove)delete pkg[section][name];}fs.writeFileSync('package.json',JSON.stringify(pkg,null,2)+'\n');"
 RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip yarn install --frozen-lockfile --network-timeout 300000 && yarn cache clean
 # 复制源码并构建（esbuild 打包 src/app.ts -> data/serve/app.js）
+# cache-bust: remove onnxruntime-web eager import
 COPY . .
-RUN yarn build && \
-    rm -rf node_modules/typescript \
-           node_modules/tsx \
-           node_modules/nodemon \
-           node_modules/@esbuild \
-           node_modules/@types \
-           node_modules/cross-env \
-           node_modules/license-checker \
-           node_modules/onnxruntime-web
+RUN yarn build
 
 # ── Stage 3: 运行时 ──────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS runtime
@@ -48,6 +41,12 @@ WORKDIR /app
 # 从 builder 复制 node_modules（含 better-sqlite3/sharp native 二进制）和编译产物
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/data/serve ./data/serve
+COPY --from=builder /app/data/skills ./data/skills
+COPY --from=builder /app/data/assets ./data/assets
+COPY --from=builder /app/data/models ./data/models
+COPY --from=builder /app/data/modelPrompt ./data/modelPrompt
+COPY --from=builder /app/data/vendor ./data/vendor
+COPY --from=builder /app/data/version.txt ./data/version.txt
 # 从 web-builder 复制前端产物（viteSingleFile 输出为单个 index.html）
 COPY --from=web-builder /web/dist ./data/web
 ENV NODE_ENV=prod

@@ -14,6 +14,7 @@ import u from "@/utils";
 import jwt from "jsonwebtoken";
 import socketInit from "@/socket/index";
 import { isEletron } from "@/utils/getPath";
+import { getOssRootDir } from "@/utils/ossPath";
 
 const app = express();
 const server = http.createServer(app);
@@ -59,15 +60,14 @@ export default async function startServe(randomPort: Boolean = false) {
   app.use(express.json({ limit: "100mb" }));
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
-  // oss 静态资源（OSS_BUCKET 已设置时文件存阿里云 OSS，无需本地静态服务）
-  if (!process.env.OSS_BUCKET) {
-    const ossDir = u.getPath("oss");
-    if (!fs.existsSync(ossDir)) {
-      fs.mkdirSync(ossDir, { recursive: true });
-    }
-    console.log("文件目录:", ossDir);
-    app.use("/oss", express.static(ossDir, { acceptRanges: false }));
+  // oss 静态资源（公开媒体文件；生产可由 OSS_MOUNT_DIR 指向 SAE OSS 挂载目录）
+  const ossDir = getOssRootDir();
+  if (!fs.existsSync(ossDir)) {
+    fs.mkdirSync(ossDir, { recursive: true });
   }
+  console.log("文件目录:", ossDir);
+  app.use("/oss", express.static(ossDir));
+
   // skills 静态资源
   const skillsDir = u.getPath("skills");
   if (!fs.existsSync(skillsDir)) {
