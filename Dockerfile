@@ -3,39 +3,33 @@
 # ── Stage 1: 构建前端 ────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS web-builder
 WORKDIR /web
-RUN npm install -g yarn@1.22.22 && \
-    npm config set registry https://registry.npmmirror.com/ && \
-    yarn config set registry https://registry.npmmirror.com/
+RUN npm config set registry https://registry.npmmirror.com/ && \
+    npm install -g yarn@1.22.22 && \
+    yarn config set registry https://registry.npmmirror.com/ && \
+    yarn config set network-timeout 300000
 # 从 named build context "web" 复制前端源码（见 docker buildx --build-context）
 COPY --from=web . .
-RUN yarn install --frozen-lockfile && \
+RUN yarn install --frozen-lockfile --network-timeout 300000 && \
     yarn build && \
     yarn cache clean
 
 # ── Stage 2: 构建后端 ────────────────────────────────────────────────────────
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
-# build-essential + python3 供 better-sqlite3/sharp native 模块编译
-RUN apt-get update && \
+# 换阿里云 apt 镜像，加速国内构建
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && \
     apt-get install -y build-essential python3 && \
     rm -rf /var/lib/apt/lists/*
-RUN npm install -g yarn@1.22.22 && \
-    npm config set registry https://registry.npmmirror.com/ && \
-    yarn config set registry https://registry.npmmirror.com/
+RUN npm config set registry https://registry.npmmirror.com/ && \
+    npm install -g yarn@1.22.22 && \
+    yarn config set registry https://registry.npmmirror.com/ && \
+    yarn config set network-timeout 300000
 # 先复制依赖文件，利用 Docker 层缓存
 COPY package.json yarn.lock ./
 # 删除 Electron 专属包，避免下载桌面端二进制
-RUN node -e "
-  const fs = require('fs');
-  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  const remove = ['custom-electron-titlebar','electron','electron-builder','electron-rebuild','electronmon'];
-  for (const section of ['dependencies','devDependencies']) {
-    if (!pkg[section]) continue;
-    for (const name of remove) delete pkg[section][name];
-  }
-  fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-"
-RUN yarn install --frozen-lockfile && yarn cache clean
+RUN node -e "const fs=require('fs');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));const remove=['custom-electron-titlebar','electron','electron-builder','electron-rebuild','electronmon'];for(const section of ['dependencies','devDependencies']){if(!pkg[section])continue;for(const name of remove)delete pkg[section][name];}fs.writeFileSync('package.json',JSON.stringify(pkg,null,2)+'\n');"
+RUN ONNXRUNTIME_NODE_INSTALL_CUDA=skip yarn install --frozen-lockfile --network-timeout 300000 && yarn cache clean
 # 复制源码并构建（esbuild 打包 src/app.ts -> data/serve/app.js）
 COPY . .
 RUN yarn build
