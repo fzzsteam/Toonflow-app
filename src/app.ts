@@ -97,6 +97,11 @@ export default async function startServe(randomPort: Boolean = false) {
     console.warn("静态网站目录不存在:", webDir);
   }
 
+  // 健康检查（无需鉴权，SAE 探活用）
+  app.get("/api/health", (_, res) => {
+    res.json({ status: "ok" });
+  });
+
   app.use(async (req, res, next) => {
     const setting = await u.db("o_setting").where("key", "tokenKey").select("value").first();
     if (!setting) return res.status(444).send({ message: "服务器秘钥未配置，请联系管理员" });
