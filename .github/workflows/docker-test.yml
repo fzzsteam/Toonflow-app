@@ -43,7 +43,7 @@ jobs:
           tar -xzf /tmp/aliyun-cli.tgz -C /tmp
           sudo mv /tmp/aliyun /usr/local/bin/aliyun
 
-          AUTH_JSON=$(aliyun cr GetAuthorizationToken --output json)
+          AUTH_JSON=$(aliyun cr GetAuthorizationToken)
           TOKEN=$(echo "$AUTH_JSON" | jq -r '.authorizationToken')
           USERNAME=$(echo "$AUTH_JSON" | jq -r '.tempUserName')
           echo "$TOKEN" | docker login \
