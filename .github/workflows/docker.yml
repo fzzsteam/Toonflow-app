@@ -26,7 +26,7 @@ jobs:
       - name: 检出前端代码（Toonflow-web，master 分支）
         run: |
           git clone --branch master --depth 1 \
-            "https://x-access-token:${{ secrets.FRONTEND_GITHUB_TOKEN }}@github.com/${{ vars.FRONTEND_GITHUB_REPO }}.git" \
+            "https://x-access-token:${{ secrets.ORG_REPO_TOKEN }}@github.com/fzzsteam/Toonflow-web.git" \
             ../Toonflow-web
 
       - name: 获取版本号
