@@ -1,0 +1,72 @@
+name: Build and Deploy Test Image
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    name: 构建并部署测试镜像
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: 检出后端代码
+        uses: actions/checkout@v4
+
+      - name: 检出前端代码（Toonflow-web，test 分支）
+        run: |
+          REPO_URL="https://x-access-token:${{ secrets.FRONTEND_GITHUB_TOKEN }}@github.com/${{ vars.FRONTEND_GITHUB_REPO }}.git"
+          if git ls-remote --heads "$REPO_URL" test | grep -q 'refs/heads/test'; then
+            git clone --branch test --depth 1 "$REPO_URL" ../Toonflow-web
+          else
+            echo "test 分支不存在，fallback 到 master"
+            git clone --depth 1 "$REPO_URL" ../Toonflow-web
+          fi
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 ACR（阿里云深圳）
+        uses: docker/login-action@v3
+        with:
+          registry: crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: 构建并推送测试镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          build-contexts: |
+            web=../Toonflow-web
+          platforms: linux/amd64
+          push: true
+          tags: crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 安装 aliyun CLI
+        run: |
+          curl -sLo /tmp/aliyun-cli.tgz https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz
+          tar -xzf /tmp/aliyun-cli.tgz -C /tmp
+          sudo mv /tmp/aliyun /usr/local/bin/aliyun
+          aliyun version
+
+      - name: 部署到 SAE 测试应用
+        run: |
+          aliyun configure set \
+            --profile sae \
+            --mode AK \
+            --region ${{ vars.SAE_REGION_ID }} \
+            --access-key-id ${{ secrets.ALIYUN_SAE_AK_ID }} \
+            --access-key-secret ${{ secrets.ALIYUN_SAE_AK_SECRET }}
+
+          aliyun --profile sae sae DeployApplication \
+            --AppId ${{ secrets.SAE_TEST_APP_ID }} \
+            --ImageUrl "crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:test"
+
+          echo "✅ SAE 测试环境部署已触发"
