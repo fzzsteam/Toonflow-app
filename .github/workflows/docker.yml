@@ -76,6 +76,11 @@ jobs:
           ALIBABACLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACR_AK_SECRET }}
           ALIBABACLOUD_REGION_ID: ${{ vars.SAE_REGION_ID }}
         run: |
+          if [ -z "$ALIBABACLOUD_ACCESS_KEY_ID" ]; then
+            echo "ALIYUN_ACR_AK_ID 未配置，跳过 ACR tag 清理"
+            exit 0
+          fi
+
           TAGS_JSON=$(aliyun cr GetRepoTags \
             --RepoNamespace fzzs \
             --RepoName default 2>/dev/null || echo '{"data":{"tags":[]}}')
