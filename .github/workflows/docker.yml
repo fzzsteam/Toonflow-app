@@ -23,13 +23,11 @@ jobs:
       - name: 检出后端代码
         uses: actions/checkout@v4
 
-      - name: 检出前端代码（Toonflow-web）
+      - name: 检出前端代码（Toonflow-web，master 分支）
         run: |
-          if [ -n "${{ secrets.GITEE_TOKEN }}" ]; then
-            git clone https://oauth2:${{ secrets.GITEE_TOKEN }}@gitee.com/shenzhen-fangzhi-zhisheng/Toonflow-web.git ../Toonflow-web
-          else
-            git clone https://gitee.com/shenzhen-fangzhi-zhisheng/Toonflow-web.git ../Toonflow-web
-          fi
+          git clone --branch master --depth 1 \
+            "https://x-access-token:${{ secrets.FRONTEND_GITHUB_TOKEN }}@github.com/${{ vars.FRONTEND_GITHUB_REPO }}.git" \
+            ../Toonflow-web
 
       - name: 获取版本号
         id: version
@@ -65,7 +63,55 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: 输出结果
+      - name: 安装 aliyun CLI
         run: |
-          echo "✅ 推送完成"
-          echo "ACR：crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"
+          curl -sLo /tmp/aliyun-cli.tgz https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz
+          tar -xzf /tmp/aliyun-cli.tgz -C /tmp
+          sudo mv /tmp/aliyun /usr/local/bin/aliyun
+          aliyun version
+
+      - name: 清理 ACR 旧版本 tag（保留最新 3 个）
+        env:
+          ALIBABACLOUD_ACCESS_KEY_ID: ${{ secrets.ALIYUN_ACR_AK_ID }}
+          ALIBABACLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_ACR_AK_SECRET }}
+          ALIBABACLOUD_REGION_ID: ${{ vars.SAE_REGION_ID }}
+        run: |
+          TAGS_JSON=$(aliyun cr GetRepoTags \
+            --RepoNamespace fzzs \
+            --RepoName default 2>/dev/null || echo '{"data":{"tags":[]}}')
+
+          TAGS_TO_DELETE=$(echo "$TAGS_JSON" | \
+            jq -r '.data.tags[] | select(.tag | test("^v")) | [.imageCreate, .tag] | @tsv' 2>/dev/null | \
+            sort -t$'\t' -k1 -rn | \
+            awk 'NR>3 {print $2}')
+
+          if [ -z "$TAGS_TO_DELETE" ]; then
+            echo "无需清理（v* tag 数量 ≤ 3）"
+          else
+            for TAG in $TAGS_TO_DELETE; do
+              echo "删除旧 tag: $TAG"
+              aliyun cr DeleteRepoTag \
+                --RepoNamespace fzzs \
+                --RepoName default \
+                --Tag "$TAG" || echo "警告：删除 $TAG 失败，继续"
+            done
+            echo "清理完成"
+          fi
+
+      - name: 部署到 SAE 生产应用
+        env:
+          ALIBABACLOUD_ACCESS_KEY_ID: ${{ secrets.ALIYUN_SAE_AK_ID }}
+          ALIBABACLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_SAE_AK_SECRET }}
+          ALIBABACLOUD_REGION_ID: ${{ vars.SAE_REGION_ID }}
+        run: |
+          if [ -z "${{ secrets.SAE_PROD_APP_ID }}" ]; then
+            echo "SAE_PROD_APP_ID 未配置，跳过生产部署"
+            exit 0
+          fi
+
+          aliyun sae DeployApplication \
+            --AppId ${{ secrets.SAE_PROD_APP_ID }} \
+            --ImageUrl "crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"
+
+          echo "SAE 生产环境部署已触发，请在控制台确认发布状态"
+          echo "镜像：crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"
