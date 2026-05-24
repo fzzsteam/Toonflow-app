@@ -57,16 +57,12 @@ jobs:
           aliyun version
 
       - name: 部署到 SAE 测试应用
+        env:
+          ALIBABACLOUD_ACCESS_KEY_ID: ${{ secrets.ALIYUN_SAE_AK_ID }}
+          ALIBABACLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_SAE_AK_SECRET }}
+          ALIBABACLOUD_REGION_ID: ${{ vars.SAE_REGION_ID }}
         run: |
-          aliyun configure set \
-            --profile sae \
-            --mode AK \
-            --region ${{ vars.SAE_REGION_ID }} \
-            --access-key-id ${{ secrets.ALIYUN_SAE_AK_ID }} \
-            --access-key-secret ${{ secrets.ALIYUN_SAE_AK_SECRET }}
-
-          aliyun --profile sae sae DeployApplication \
+          aliyun sae DeployApplication \
             --AppId ${{ secrets.SAE_TEST_APP_ID }} \
             --ImageUrl "crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:test"
-
-          echo "✅ SAE 测试环境部署已触发"
+          echo "SAE 测试环境部署已触发，请在控制台确认发布状态"
