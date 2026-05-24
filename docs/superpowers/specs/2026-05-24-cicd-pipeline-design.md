@@ -38,7 +38,7 @@
 ACR 个人版不支持自动清理，由生产构建流水线末尾执行：
 
 - 列出仓库所有 `v*` 开头的版本 tag（排除 `latest`、`test`）
-- 按创建时间倒序，保留最新 **5 个**
+- 按创建时间倒序，保留最新 **3 个**
 - 超出部分调用 `aliyun cr DeleteRepoTag` 逐个删除
 
 测试环境无需清理（固定 `:test` tag）。
@@ -112,7 +112,7 @@ ACR 个人版不支持自动清理，由生产构建流水线末尾执行：
 ### `docker.yml`（现有改造）
 
 ```
-触发：push v* tag / workflow_dispatch（新增 deploy 开关，默认关）
+触发：push v* tag / workflow_dispatch（两者行为完全相同，均构建+推送+部署）
 
 步骤：
 1. 检出后端代码
@@ -123,7 +123,7 @@ ACR 个人版不支持自动清理，由生产构建流水线末尾执行：
 6. 构建并推送镜像 → :v1.2.3 + :latest
 7. 配置 aliyun CLI（ACR 账号 AK），清理旧 tag（保留最新 5 个）
 8. 配置 aliyun CLI（SAE 账号 AK）
-9. 仅 v* tag 触发时，部署 SAE 生产应用
+9. 部署 SAE 生产应用（v* tag 和 workflow_dispatch 均执行）
    aliyun sae DeployApplication
      --AppId $SAE_PROD_APP_ID
      --ImageUrl crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:v1.2.3
