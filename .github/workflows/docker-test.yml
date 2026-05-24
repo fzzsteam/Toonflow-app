@@ -45,7 +45,7 @@ jobs:
             web=../Toonflow-web
           platforms: linux/amd64
           push: true
-          tags: crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:test
+          tags: crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -70,5 +70,5 @@ jobs:
 
           aliyun sae DeployApplication \
             --AppId "$SAE_TEST_APP_ID" \
-            --ImageUrl "crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:test"
+            --ImageUrl "crpi-7ajeyduewy90avu4-vpc.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:test"
           echo "SAE 测试环境部署已触发，请在控制台确认发布状态"

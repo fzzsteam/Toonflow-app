@@ -58,8 +58,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}
-            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:latest
+            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:${{ steps.version.outputs.tag }}
+            crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -83,7 +83,7 @@ jobs:
 
           TAGS_JSON=$(aliyun cr GetRepoTags \
             --RepoNamespace fzzs \
-            --RepoName default 2>/dev/null || echo '{"data":{"tags":[]}}')
+            --RepoName toonflow 2>/dev/null || echo '{"data":{"tags":[]}}')
 
           TAGS_TO_DELETE=$(echo "$TAGS_JSON" | \
             jq -r '.data.tags[] | select(.tag | test("^v")) | [.imageCreate, .tag] | @tsv' 2>/dev/null | \
@@ -97,7 +97,7 @@ jobs:
               echo "删除旧 tag: $TAG"
               aliyun cr DeleteRepoTag \
                 --RepoNamespace fzzs \
-                --RepoName default \
+                --RepoName toonflow \
                 --Tag "$TAG" || echo "警告：删除 $TAG 失败，继续"
             done
             echo "清理完成"
@@ -117,7 +117,7 @@ jobs:
 
           aliyun sae DeployApplication \
             --AppId "$SAE_PROD_APP_ID" \
-            --ImageUrl "crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"
+            --ImageUrl "crpi-7ajeyduewy90avu4-vpc.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:${{ steps.version.outputs.tag }}"
 
           echo "SAE 生产环境部署已触发，请在控制台确认发布状态"
-          echo "镜像：crpi-7ajeyduewy90avu4.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/default:${{ steps.version.outputs.tag }}"
+          echo "镜像：crpi-7ajeyduewy90avu4-vpc.cn-shenzhen.personal.cr.aliyuncs.com/fzzs/toonflow:${{ steps.version.outputs.tag }}"
