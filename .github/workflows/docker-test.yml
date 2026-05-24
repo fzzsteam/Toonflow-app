@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - test
+  repository_dispatch:
+    types: [frontend-test-updated]
   workflow_dispatch:
 
 jobs:
