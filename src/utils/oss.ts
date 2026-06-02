@@ -5,8 +5,20 @@ import path from "node:path";
 import sharp from "sharp";
 import { getOssRootDir } from "@/utils/ossPath";
 
+/**
+ * 规范化用户传入的相对路径：
+ * 1. 去除前导斜杠
+ * 2. 剥离可能混入的 URL 前缀（oss/、smallImage/），防止路径累积污染
+ * 3. 统一转为本机路径分隔符
+ */
 function normalizeUserPath(userPath: string): string {
-  const trimmedPath = userPath.replace(/^[/\\]+/, "");
+  let trimmedPath = userPath.replace(/^[/\\]+/, "");
+  // 循环剥离 oss/ 和 smallImage/ 前缀，防止已污染路径（如 "oss/oss/oss/..."）继续叠加
+  let prev: string;
+  do {
+    prev = trimmedPath;
+    trimmedPath = trimmedPath.replace(/^(oss\/|smallImage\/)+/i, "");
+  } while (trimmedPath !== prev);
   return trimmedPath.split("/").join(path.sep);
 }
 
@@ -134,7 +146,9 @@ class OSS {
    * 缩略图路径：smallImage/{relPath}。
    */
   async getSmallImageUrl(userRelPath: string): Promise<string> {
-    const smallImageRelPath = `smallImage/${userRelPath.replace(/^[/\\]+/, "")}`;
+    // 先对输入路径做规范化清洗，防止已污染路径在缩略图子路径中继续累积
+    const cleanedRelPath = normalizeUserPath(userRelPath);
+    const smallImageRelPath = `smallImage/${cleanedRelPath}`;
 
     if (await this.fileExists(smallImageRelPath)) {
       return this.getFileUrl(smallImageRelPath);

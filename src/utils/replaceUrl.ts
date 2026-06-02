@@ -5,11 +5,18 @@ export default function replaceUrl(url: string): string {
     let cleanedPath = '';
     try {
         const pathname = new URL(url).pathname;
-        cleanedPath = pathname.replace(/^\/oss/, '').replace(/^\/smallImage/, '');
+        cleanedPath = pathname;
     } catch (e) {
         // 如果不是有效的URL，则直接使用原字符串
         cleanedPath = url;
     }
+
+    // 循环剥离 /oss 和 /smallImage 前缀（处理已累积污染的路径）
+    let prev: string;
+    do {
+        prev = cleanedPath;
+        cleanedPath = cleanedPath.replace(/^(\/oss|\/smallImage)/i, '');
+    } while (cleanedPath !== prev);
 
     // 防止路径穿越：对路径进行规范化后，确保不含上溯分量
     // 使用 posix 规范化（保持 / 分隔符），去除所有 .. 和 .

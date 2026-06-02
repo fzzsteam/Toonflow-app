@@ -147,7 +147,11 @@ async function getAssetsImageBase64(imageIds: number[]) {
   // 建立 id 到 filePath 的映射
   const id2Path = new Map<number, string>();
   for (const row of imagePaths) {
-    id2Path.set(row.id, row.filePath);
+    // 清洗 filePath：去除可能累积的 /oss/、/smallImage/ 等URL前缀，确保是纯净的相对路径
+    const cleanPath = sanitizeFilePath(row.filePath);
+    if (cleanPath) {
+      id2Path.set(row.id, cleanPath);
+    }
   }
 
   // 保证输出顺序与 imageIds 一致
@@ -166,4 +170,20 @@ async function getAssetsImageBase64(imageIds: number[]) {
   );
   // 保留顺序，并且过滤掉无效项
   return (imageUrls.filter(Boolean) as string[]).map((url) => ({ type: "image" as const, base64: url }));
+}
+
+/**
+ * 清洗从数据库读出的文件路径：
+ * 剥离可能混入的 URL 前缀（oss/、smallImage/），防止路径累积导致 ENOENT。
+ */
+function sanitizeFilePath(rawPath: string | null | undefined): string | null {
+  if (!rawPath) return null;
+  let p = rawPath.replace(/^[/\\]+/, "");
+  // 循环剥离 oss/ 和 smallImage/ 前缀
+  let prev: string;
+  do {
+    prev = p;
+    p = p.replace(/^(oss\/|smallImage\/)+/i, "");
+  } while (p !== prev);
+  return p || null;
 }
