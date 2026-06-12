@@ -168,6 +168,7 @@ import route164 from "./routes/task/getTaskApi";
 import route165 from "./routes/task/getTaskCategories";
 import route166 from "./routes/task/taskDetails";
 import route167 from "./routes/test/test";
+import route168 from "./routes/assets/batchUploadAssets";
 
 export default async (app: Express) => {
   app.use("/api/agents/clearMemory", route1);
@@ -179,6 +180,7 @@ export default async (app: Express) => {
   app.use("/api/assets/addAssets", route7);
   app.use("/api/assets/addAudioAssets", route8);
   app.use("/api/assets/batchDelete", route9);
+  app.use("/api/assets/batchUploadAssets", route168);
   app.use("/api/assets/batchGenerationData", route10);
   app.use("/api/assets/delAssets", route11);
   app.use("/api/assets/delImage", route12);
